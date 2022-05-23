@@ -1,0 +1,89 @@
+#################
+# PCA of raster variables
+#################
+
+# Libraries
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+library(raster)
+library(RStoolbox)
+library(rgdal)
+library(hablar)
+
+# Set and Check WD()
+getwd()
+
+# Upload all ASCII files from folder
+layer <- raster("your/working/directory/layer.asc")
+
+# Convert them into data frames
+layer <- as.data.frame(layer)
+
+# Bind the data frame layers into one data frame for the PCA analysis
+raster.df <- cbind(layer)
+
+View(raster.df)
+
+
+# Omit all NAs from the data frame
+raster.na <- na.omit(raster.df)
+View(raster.na)
+
+# Run a log function on the data frame
+# Use the abs() function to eliminate negative values and NAs
+# Use the +1 to eliminate inf/-inf
+
+raster.log <- log(abs(raster.na) +1, base = 10)
+View(raster.log)
+
+
+# Since these variables are not consistent, use scale. = T
+pca.results <- prcomp(raster.log,
+                      center = T,
+                      scale. = T)
+# View different parts of the pca.results
+pca.results
+summary(pca.results)
+
+# the plot function provides a scree plot
+plot(pca.results) +
+  abline(h = 4.16, col = "red", lty = 1) # By placing this line, it demonstrates how much variance is captured in just one variable
+
+
+loadings <- pca.results$rotation
+loadings_csv <- write.csv(loadings, "loadings.csv")
+pca.results$x
+attributes(pca.results)
+w <- pca.results$rotation
+w <- as.matrix(w)
+w[, 1] %*% w [, 1]
+w[, 2] %*% w [, 2]
+
+
+vars <- w %*% diag(pca.results$sdev^2)
+View(vars)
+
+
+vars <- data.frame(vars)
+raster_vars <- write.csv(vars, "raster_val.csv")
+
+vars <- read.csv("raster_val.csv")
+
+View(vars)
+vars <- select_(vars, "Variables", "PC1", "PC2")
+View(vars)
+write.table(vars) 
+
+# Plot the PCA results in ordination space.
+raster_gg <- ggplot(vars, aes(PC1, PC2)) +
+  geom_point(size = 3, col = "red") +
+  geom_text(aes(label = Variables)) +
+  geom_hline(yintercept = 0, lty = "dashed") +
+  geom_vline(xintercept = 0, lty = "dashed") +
+  labs(x = "PC1", y = "PC2") 
+  
+raster_gg
+
+
+
